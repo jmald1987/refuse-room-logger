@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Refuse Room Logger</title>
+  <style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 16px;
+    font-size: 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+
+  select,
+  button {
+    font-size: 20px;
+    padding: 8px;
+  }
+
+  label {
+    display: block;
+    margin: 10px 0;
+  }
+
+  input[type="checkbox"] {
+    transform: scale(1.5);
+    margin-right: 10px;
+  }
+
+  button {
+    margin-top: 16px;
+    width: 100%;
+  }
+
+  #message {
+    font-weight: bold;
+  }
+
+  li {
+    margin-bottom: 8px;
+  }
+  .issue input {
+  display: none;
+}
+
+.issue span {
+  display: block;
+  padding: 14px;
+  margin: 10px 0;
+  border: 2px solid #999;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 22px;
+}
+
+.issue input:checked + span {
+  background: #222;
+  color: white;
+  border-color: #222;
+}
+
+</style>
+</head>
+<body>
+  <h1>Refuse Room Logger</h1>
+
+ <label>
+  Floor:
+  <select id="floor"></select>
+</label>
+
+  <h3>Issues</h3>
+
+<label class="issue">
+  <input id="dust" type="checkbox">
+  <span>Dust</span>
+</label>
+
+<label class="issue">
+  <input id="stains" type="checkbox">
+  <span>Stains</span>
+</label>
+
+<label class="issue">
+  <input id="trash" type="checkbox">
+  <span>Trash</span>
+</label>
+
+<label class="issue">
+  <input id="mop" type="checkbox">
+  <span>Mop</span>
+</label>
+
+  <button onclick="saveEntry()">Save</button>
+
+  <p id="message"></p>
+
+  <h3>Recent Entries</h3>
+  <ul id="entries"></ul>
+
+  <script>
+  const allowedFloors = [];
+
+  for (let floor = 57; floor >= 5; floor--) {
+    if (floor !== 32) {
+      allowedFloors.push(floor);
+    }
+  }
+
+  const floorSelect = document.getElementById("floor");
+
+  allowedFloors.forEach(floor => {
+    const option = document.createElement("option");
+    option.value = floor;
+    option.textContent = floor === 57 ? "PH" : floor;
+    floorSelect.appendChild(option);
+  });
+
+  async function saveEntry() {
+    const button = document.querySelector("button");
+    button.disabled = true;
+
+    const floor = Number(document.getElementById("floor").value);
+
+    const data = {
+      floor,
+      dust: document.getElementById("dust").checked,
+      stains: document.getElementById("stains").checked,
+      trash: document.getElementById("trash").checked,
+      mop: document.getElementById("mop").checked
+    };
+
+    if (!allowedFloors.includes(floor)) {
+      document.getElementById("message").textContent = "Invalid floor.";
+      button.disabled = false;
+      return;
+    }
+
+    if (!data.dust && !data.stains && !data.trash && !data.mop) {
+      document.getElementById("message").textContent = "Select at least one issue.";
+      button.disabled = false;
+      return;
+    }
+
+    const response = await fetch("entry", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (response.ok) {
+      document.getElementById("message").textContent = "Saved.";
+
+      document.getElementById("dust").checked = false;
+      document.getElementById("stains").checked = false;
+      document.getElementById("trash").checked = false;
+      document.getElementById("mop").checked = false;
+
+      await loadEntries();
+    } else {
+      document.getElementById("message").textContent = "Save failed.";
+    }
+
+    button.disabled = false;
+  }
+
+  async function loadEntries() {
+    const response = await fetch("entries");
+    const entries = await response.json();
+
+    const list = document.getElementById("entries");
+    if (!list) return;
+
+    list.innerHTML = "";
+
+    entries.slice(0, 10).forEach(entry => {
+      const floorLabel = entry.floor === 57 ? "PH" : entry.floor;
+
+      const issues = [
+        entry.dust ? "Dust" : null,
+        entry.stains ? "Stains" : null,
+        entry.trash ? "Trash" : null,
+        entry.mop ? "Mop" : null
+      ].filter(Boolean).join(", ");
+
+      const item = document.createElement("li");
+      const dateTime = new Date(entry.created_at).toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+      });
+
+      item.textContent = `${dateTime} - Floor ${floorLabel}: ${issues}`;
+      list.appendChild(item);
+    });
+  }
+
+  loadEntries();
+</script>
+</body>
+</html>
