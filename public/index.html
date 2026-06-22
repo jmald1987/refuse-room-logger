@@ -100,8 +100,34 @@
 
   <p id="message"></p>
 
+<h2>Recyclables</h2>
+
+<label>
+  Blue Bags
+  <input id="blue_bags" type="number" min="0" value="0">
+</label>
+
+<label>
+  Clear Bags
+  <input id="clear_bags" type="number" min="0" value="0">
+</label>
+
+<label>
+  Bales
+  <input id="bales" type="number" min="0" value="0">
+</label>
+
+<button onclick="saveRecyclables()">
+  Save Recyclables
+</button>
+
+<p id="recyclablesMessage"></p>
+  
   <h3>Recent Entries</h3>
   <ul id="entries"></ul>
+
+  <h3>Recent Recyclables</h3>
+<ul id="recyclablesList"></ul>
 
   <script>
   const allowedFloors = [];
@@ -171,6 +197,44 @@
     button.disabled = false;
   }
 
+  async function saveRecyclables() {
+  const data = {
+    blue_bags: Number(document.getElementById("blue_bags").value),
+    clear_bags: Number(document.getElementById("clear_bags").value),
+    bales: Number(document.getElementById("bales").value)
+  };
+
+  if (
+    data.blue_bags === 0 &&
+    data.clear_bags === 0 &&
+    data.bales === 0
+  ) {
+    document.getElementById("recyclablesMessage").textContent =
+      "Enter at least one value.";
+    return;
+  }
+
+  const response = await fetch("/recyclables", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(data)
+  });
+
+  if (response.ok) {
+    document.getElementById("recyclablesMessage").textContent =
+      "Recyclables saved.";
+
+    document.getElementById("blue_bags").value = 0;
+    document.getElementById("clear_bags").value = 0;
+    document.getElementById("bales").value = 0;
+  } else {
+    document.getElementById("recyclablesMessage").textContent =
+      "Save failed.";
+  }
+}
+
   async function loadEntries() {
     const response = await fetch("entries");
     const entries = await response.json();
@@ -206,6 +270,40 @@
   }
 
   loadEntries();
+
+async function loadRecyclables() {
+  const response = await fetch("/recyclables");
+  const entries = await response.json();
+
+  const list = document.getElementById("recyclablesList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  entries.slice(0, 10).forEach(entry => {
+    const dateTime = new Date(entry.created_at).toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+
+    const item = document.createElement("li");
+
+    item.textContent =
+      `${dateTime} - ` +
+      `Blue Bags: ${entry.blue_bags}, ` +
+      `Clear Bags: ${entry.clear_bags}, ` +
+      `Bales: ${entry.bales}`;
+
+    list.appendChild(item);
+  });
+}
+
+loadRecyclables();
+
 </script>
 </body>
 </html>

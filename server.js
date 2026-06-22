@@ -51,6 +51,8 @@ app.post("/entry", async (req, res) => {
   }
 });
 
+
+
 app.get("/entries", async (req, res) => {
   try {
     const result = await pool.query(
@@ -69,6 +71,40 @@ app.get("/entries", async (req, res) => {
   }
 });
 
+app.post("/recyclables", async (req, res) => {
+  try {
+    const {
+      blue_bags,
+      clear_bags,
+      bales
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO recyclables
+      (blue_bags, clear_bags, bales)
+      VALUES ($1, $2, $3)
+      RETURNING *`,
+      [
+        blue_bags,
+        clear_bags,
+        bales
+      ]
+    );
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "failed" });
+  }
+});
+
+app.get("/recyclables", async (req, res) => {
+  const result = await pool.query(
+    "SELECT * FROM recyclables ORDER BY created_at DESC"
+  );
+
+  res.json(result.rows);
+});
 
 app.listen(PORT, () => {
   console.log(`Refuse Room Logger API running on port ${PORT}`);
